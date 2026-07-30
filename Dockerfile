@@ -15,7 +15,13 @@ RUN curl -fsSL https://ollama.com/install.sh | sh
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip3 install --upgrade pip && pip3 install -r requirements.txt
+# Pin torch to a CUDA 12.1 build explicitly -- letting pip grab the newest
+# default torch wheel bundles a CUDA 13.x runtime that many RunPod hosts'
+# NVIDIA drivers are too old for, silently falling back to CPU embedding.
+# CUDA 12.1 only needs driver >=525, which is broadly compatible.
+RUN pip3 install --upgrade pip \
+    && pip3 install torch==2.4.1 --index-url https://download.pytorch.org/whl/cu121 \
+    && pip3 install -r requirements.txt
 
 COPY . .
 
