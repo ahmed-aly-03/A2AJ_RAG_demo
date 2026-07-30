@@ -1,0 +1,9 @@
+faiss-cpu
+sentence-transformers
+datasets
+pyarrow
+requests
+tqdm
+numpy
+gradio
+rank_bm25

@@ -1,0 +1,12 @@
+.venv
+.idea
+__pycache__
+*.pyc
+# corpus.jsonl IS baked into the image (no GPU needed to produce it, saves
+# re-downloading from HuggingFace on every pod boot). The FAISS index still
+# needs the pod's GPU, so it's built by start.sh at container start instead.
+index_store/faiss.index
+index_store/chunk_meta.jsonl
+eval/eval_qa.jsonl
+eval/eval_results.jsonl
+.git

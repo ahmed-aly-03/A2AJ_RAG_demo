@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.idea/
+.claude/
+
+# Generated data (regenerate via the scripts documented in README.md)
+data/corpus.jsonl
+index_store/faiss.index
+index_store/chunk_meta.jsonl
+eval/eval_qa.jsonl
+eval/eval_results.jsonl
+
+# Secrets -- never commit
+runpod_key
+runpod_key.pub
