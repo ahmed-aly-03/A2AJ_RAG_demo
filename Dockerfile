@@ -19,8 +19,15 @@ COPY requirements.txt .
 # default torch wheel bundles a CUDA 13.x runtime that many RunPod hosts'
 # NVIDIA drivers are too old for, silently falling back to CPU embedding.
 # CUDA 12.1 only needs driver >=525, which is broadly compatible.
+#
+# transformers/sentence-transformers are also pinned here: the newest
+# transformers (unpinned) requires a torch.distributed.tensor.DTensor API
+# that doesn't exist in torch 2.4.1, so leaving them unpinned breaks the
+# import chain against the pinned torch above. These versions are a known
+# compatible combo from the same era as torch 2.4.1.
 RUN pip3 install --upgrade pip \
     && pip3 install torch==2.4.1 --index-url https://download.pytorch.org/whl/cu121 \
+    && pip3 install "transformers==4.44.2" "sentence-transformers==3.0.1" \
     && pip3 install -r requirements.txt
 
 COPY . .
