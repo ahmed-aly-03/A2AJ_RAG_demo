@@ -125,25 +125,28 @@ just test/evaluate:
    restarts once the index exists.
 2. Starts `ollama serve` and waits until it actually responds (not just
    "installed").
-3. Pulls the standard 4-model lineup:
+3. Pulls **qwen2.5:32b** first (the default demo model, ~20GB VRAM) and
+   immediately launches `chatbot_ui.py` (Gradio) with it on port **7860** --
+   a model dropdown (populated from `ollama list`) and a top-k slider let
+   you drive the whole thing from a browser instead of the terminal. The
+   demo doesn't wait on the rest of the lineup to become usable.
+4. Pulls the remaining models in the background, so they show up in the
+   dropdown once ready without blocking startup:
 
    ```
    llama3.2:3b   (small,  ~3GB VRAM)
    llama3.1:8b   (medium, ~6GB VRAM)
    phi4:14b      (large,  ~10GB VRAM)
-   qwen2.5:32b   (xl,     ~20GB VRAM)
    ```
 
-4. Launches `chatbot_ui.py` (Gradio) in the background on port **7860** --
-   a model dropdown (populated from `ollama list`) and a top-k slider let
-   you drive the whole thing from a browser instead of the terminal.
 5. Stays alive (`sleep infinity`) so RunPod/`docker exec` can attach.
 
-Expect the first few minutes of pod uptime to be spent embedding the corpus
-and pulling ~35GB of model weights before things are actually ready — check
+Expect the first minute or two of pod uptime to be spent embedding the
+corpus and pulling qwen2.5:32b before the UI is actually reachable — check
 `docker logs` (or just watch the attached terminal) for `[start.sh] Ready.`
-Model weights are pulled fresh on every container start unless you mount a
-RunPod persistent volume at `/root/.ollama`.
+The other 3 models keep downloading afterward in the background (~13GB
+more). Model weights are pulled fresh on every container start unless you
+mount a RunPod persistent volume at `/root/.ollama`.
 
 To reach the UI from outside the container, expose port 7860 when you create
 the pod (RunPod's "Expose HTTP Ports" field), then open the pod's proxy URL,

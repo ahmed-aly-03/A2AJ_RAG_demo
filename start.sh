@@ -2,16 +2,17 @@
 # Container entrypoint:
 #   1. build the FAISS index (data prep + GPU embedding) if it's not there yet
 #   2. bring up a local Ollama server (if OLLAMA_HOST points at this container)
-#   3. pull the standard model lineup
-#   4. start the Gradio chat UI in the background
+#   3. pull the default model (qwen2.5:32b) and launch the Gradio chat UI with
+#      it right away -- don't make the demo wait on the other 3 models
+#   4. pull the remaining models in the background for later comparison
 #   5. stay alive so RunPod/docker exec can attach
 set -uo pipefail
 
-MODELS=(
+DEFAULT_MODEL="qwen2.5:32b"
+OTHER_MODELS=(
   "llama3.2:3b"
   "llama3.1:8b"
   "phi4:14b"
-  "qwen2.5:32b"
 )
 
 cd /app
@@ -39,17 +40,23 @@ if [[ "$OLLAMA_HOST" == *"localhost"* || "$OLLAMA_HOST" == *"127.0.0.1"* ]]; the
     done
     echo "[start.sh] Ollama server is up."
 
-    for model in "${MODELS[@]}"; do
-        echo "[start.sh] Pulling $model ..."
-        ollama pull "$model" || echo "[start.sh] WARNING: failed to pull $model, continuing"
-    done
-    echo "[start.sh] Model pulls done."
+    echo "[start.sh] Pulling default model $DEFAULT_MODEL ..."
+    ollama pull "$DEFAULT_MODEL" || echo "[start.sh] WARNING: failed to pull $DEFAULT_MODEL"
+
+    echo "[start.sh] Pulling remaining models in the background (llama3.2:3b, llama3.1:8b, phi4:14b) ..."
+    (
+        for model in "${OTHER_MODELS[@]}"; do
+            echo "[start.sh] Pulling $model ..."
+            ollama pull "$model" || echo "[start.sh] WARNING: failed to pull $model, continuing"
+        done
+        echo "[start.sh] Remaining model pulls done."
+    ) &
 else
     echo "[start.sh] OLLAMA_HOST=$OLLAMA_HOST points elsewhere -- skipping local Ollama bootstrap."
 fi
 
-echo "[start.sh] Starting Gradio chat UI on :7860 ..."
-nohup python3 chatbot_ui.py > /var/log/chatbot_ui.log 2>&1 &
+echo "[start.sh] Starting Gradio chat UI on :7860 with $DEFAULT_MODEL ..."
+nohup python3 chatbot_ui.py --model "$DEFAULT_MODEL" > /var/log/chatbot_ui.log 2>&1 &
 
-echo "[start.sh] Ready. Container staying alive for exec/SSH access."
+echo "[start.sh] Ready ($DEFAULT_MODEL live now, other models pulling in background if applicable). Container staying alive for exec/SSH access."
 exec sleep infinity
