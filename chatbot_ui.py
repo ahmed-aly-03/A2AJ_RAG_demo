@@ -35,11 +35,12 @@ def respond(message, history, model_name, k):
 
     message = message.strip()
 
+    # Gradio's ChatInterface (type="messages") hands history as a flat list
+    # of {"role": ..., "content": ...} dicts -- re-emit just those two keys
+    # in case a given gradio version tucks extra metadata into the dict.
     conversation = [build_system_message()]
-    for user_text, bot_text in history:
-        conversation.append({"role": "user", "content": user_text})
-        if bot_text:
-            conversation.append({"role": "assistant", "content": bot_text})
+    for turn in history:
+        conversation.append({"role": turn["role"], "content": turn["content"]})
 
     query_vec = _embedder.encode_query(message)
     retrieved = _store.search(query_vec, message, int(k))
@@ -85,6 +86,7 @@ def main():
 
     demo = gr.ChatInterface(
         fn=respond,
+        type="messages",
         title=f"A2AJ Immigration RAG Demo ({default_model})",
         description=(
             f"Hybrid (FAISS + BM25) retrieval over {_store.index.ntotal} chunks, "
