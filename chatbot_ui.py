@@ -35,12 +35,19 @@ def respond(message, history, model_name, k):
 
     message = message.strip()
 
-    # Gradio's ChatInterface (type="messages") hands history as a flat list
-    # of {"role": ..., "content": ...} dicts -- re-emit just those two keys
-    # in case a given gradio version tucks extra metadata into the dict.
+    # History shape depends on the installed Gradio version: newer versions
+    # (type="messages") hand a flat list of {"role", "content"} dicts; older
+    # versions hand a list of [user_text, bot_text] pairs. Handle both so
+    # this doesn't break again on a different Gradio version elsewhere.
     conversation = [build_system_message()]
     for turn in history:
-        conversation.append({"role": turn["role"], "content": turn["content"]})
+        if isinstance(turn, dict):
+            conversation.append({"role": turn["role"], "content": turn["content"]})
+        else:
+            user_text, bot_text = turn
+            conversation.append({"role": "user", "content": user_text})
+            if bot_text:
+                conversation.append({"role": "assistant", "content": bot_text})
 
     query_vec = _embedder.encode_query(message)
     retrieved = _store.search(query_vec, message, int(k))
@@ -84,9 +91,8 @@ def main():
         models = [args.model] + models
     default_model = args.model or models[0]
 
-    demo = gr.ChatInterface(
+    chat_interface_kwargs = dict(
         fn=respond,
-        type="messages",
         title=f"A2AJ Immigration RAG Demo ({default_model})",
         description=(
             f"Hybrid (FAISS + BM25) retrieval over {_store.index.ntotal} chunks, "
@@ -97,6 +103,12 @@ def main():
             gr.Slider(minimum=1, maximum=10, value=config.TOP_K, step=1, label="Top-k retrieved chunks"),
         ],
     )
+    try:
+        # Newer Gradio versions support (and default to) type="messages".
+        demo = gr.ChatInterface(type="messages", **chat_interface_kwargs)
+    except TypeError:
+        # Older Gradio versions don't accept the `type` kwarg at all.
+        demo = gr.ChatInterface(**chat_interface_kwargs)
 
     demo.queue().launch(server_name=args.host, server_port=args.port)
 
