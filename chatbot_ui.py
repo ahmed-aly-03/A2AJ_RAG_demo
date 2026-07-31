@@ -19,6 +19,24 @@ _store = None
 _embedder = None
 
 
+def _coerce_content(content):
+    """Newer Gradio versions can represent message content as a list of
+    parts (e.g. [{"type": "text", "text": "..."}]) rather than a plain
+    string. Ollama's /api/chat expects a plain string, so flatten to one
+    regardless of which shape Gradio handed us."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for part in content:
+            if isinstance(part, dict) and "text" in part:
+                parts.append(part["text"])
+            elif isinstance(part, str):
+                parts.append(part)
+        return "\n".join(parts)
+    return str(content)
+
+
 def get_default_models():
     probe = OllamaClient(host=config.OLLAMA_HOST, model=config.DEFAULT_OLLAMA_MODEL)
     models = probe.list_models()
@@ -42,12 +60,12 @@ def respond(message, history, model_name, k):
     conversation = [build_system_message()]
     for turn in history:
         if isinstance(turn, dict):
-            conversation.append({"role": turn["role"], "content": turn["content"]})
+            conversation.append({"role": turn["role"], "content": _coerce_content(turn["content"])})
         else:
             user_text, bot_text = turn
-            conversation.append({"role": "user", "content": user_text})
+            conversation.append({"role": "user", "content": _coerce_content(user_text)})
             if bot_text:
-                conversation.append({"role": "assistant", "content": bot_text})
+                conversation.append({"role": "assistant", "content": _coerce_content(bot_text)})
 
     query_vec = _embedder.encode_query(message)
     retrieved = _store.search(query_vec, message, int(k))

@@ -118,7 +118,10 @@ class OllamaClient:
             return resp.json()["message"]["content"]
 
         resp = requests.post(url, json=payload, timeout=300, stream=True)
-        resp.raise_for_status()
+        if not resp.ok:
+            raise requests.exceptions.HTTPError(
+                f"{resp.status_code} error from {url}: {resp.text}", response=resp
+            )
         full = []
         for line in resp.iter_lines():
             if not line:
@@ -144,7 +147,10 @@ class OllamaClient:
             "options": {"temperature": temperature},
         }
         resp = requests.post(url, json=payload, timeout=300, stream=True)
-        resp.raise_for_status()
+        if not resp.ok:
+            raise requests.exceptions.HTTPError(
+                f"{resp.status_code} error from {url}: {resp.text}", response=resp
+            )
         for line in resp.iter_lines():
             if not line:
                 continue
